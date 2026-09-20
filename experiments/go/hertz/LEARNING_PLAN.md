@@ -32,7 +32,7 @@ The [README teaching guide](README.md#teaching-guide-for-agents) controls lesson
 
 **Reference:** [Binding and validation](https://www.cloudwego.io/docs/hertz/tutorials/basic-feature/binding-and-validate/) and [error handling](https://www.cloudwego.io/docs/hertz/tutorials/basic-feature/error-handle/).
 
-## Stage 3 — Middleware and request context — active
+## Stage 3 — Middleware and request context — complete
 
 **Question:** How do pre-handler work, post-handler work, aborts, and request-scoped values behave?
 

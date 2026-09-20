@@ -38,7 +38,7 @@ Use [LEARNING_PLAN.md](LEARNING_PLAN.md) as the topic syllabus and acceptance ch
 
 ## Status
 
-Active. Stages 0–2 are complete and Stage 3, middleware and request context, is active.
+Active. Stages 0–3 are complete and Stage 4, testing workflow, is planned.
 
 ## Versions
 
@@ -96,6 +96,8 @@ Stop the server with `Ctrl-C`. Hertz `v0.9.6` and later handles `SIGINT`, `SIGHU
 - `newServer` keeps route construction separate from `main`, so tests can exercise the routing engine without opening a network port.
 - `ut.PerformRequest` runs a request through the engine in process, similar in purpose to the standard library's `httptest` utilities.
 - The create-task request uses `json:"title,required"` for presence during binding and `vd:"len($)>0"` for non-empty validation.
+- Server middleware registered with `h.Use` wraps routes registered after it; group middleware applies only to matched routes in that group.
+- `RequestContext.Set` and `GetString` propagate the request ID within the request lifecycle.
 
 ## Findings
 
@@ -111,6 +113,8 @@ Stop the server with `Ctrl-C`. Hertz `v0.9.6` and later handles `SIGINT`, `SIGHU
 - The smallest server needs one engine, one route, and `Spin()`.
 - Separating engine construction makes a route test small and avoids listening on a real port.
 - Missing, empty, and malformed title inputs can share a stable public error response while `BindAndValidate` handles their different internal failure paths.
+- Middleware around `c.Next(ctx)` runs pre-handler work in registration order and post-handler work in reverse order.
+- Aborting an inner middleware skips pending handlers but still returns control to post-handler work in already-running outer middleware.
 
 ### Inferences
 
@@ -123,11 +127,11 @@ Stop the server with `Ctrl-C`. Hertz `v0.9.6` and later handles `SIGINT`, `SIGHU
 
 ## Strengths and limitations
 
-Current evidence suggests a concise routing API, first-party in-process test support, and explicit binding helpers. This is only a one-route experiment, so it does not yet support conclusions about validation ergonomics, generated code, production operations, or performance.
+Current evidence suggests a concise routing API, explicit binding helpers, composable middleware, and first-party in-process test support. The experiment remains an in-memory API, so it does not yet support conclusions about lifecycle behavior, generated code, production operations, or performance.
 
 ## Verdict
 
-Not enough evidence yet. Complete stages 1–6 in the learning plan before deciding where Hertz fits compared with other Go HTTP frameworks.
+Not enough evidence yet. Complete stages 4–6 in the learning plan before deciding where Hertz fits compared with other Go HTTP frameworks.
 
 ## References
 

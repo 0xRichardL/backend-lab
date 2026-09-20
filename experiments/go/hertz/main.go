@@ -16,11 +16,17 @@ type CreateTaskRequest struct {
 func newServer() *server.Hertz {
 	h := server.Default(server.WithHostPorts("127.0.0.1:8888"))
 
+	// Stage 3: server middleware wraps every matched route.
+	h.Use(addRequestTiming())
+
+	// Stage 0: minimum route and JSON response.
 	h.GET("/health", func(_ context.Context, c *app.RequestContext) {
 		c.JSON(consts.StatusOK, utils.H{"status": "ok"})
 	})
 
+	// Stage 1: groups share a path prefix and can own middleware.
 	tasks := h.Group("/tasks")
+	tasks.Use(requireRequestID())
 	tasks.GET("/recent", func(_ context.Context, c *app.RequestContext) {
 		c.JSON(consts.StatusOK, utils.H{"tasks": []any{}})
 	})
@@ -28,13 +34,16 @@ func newServer() *server.Hertz {
 		id := c.Param("id")
 		c.JSON(consts.StatusOK, utils.H{"id": id})
 	})
+
+	// Stage 2: BindAndValidate combines JSON binding and tag validation.
 	tasks.POST("", func(_ context.Context, c *app.RequestContext) {
 		var request CreateTaskRequest
 		if err := c.BindAndValidate(&request); err != nil {
 			c.JSON(consts.StatusBadRequest, utils.H{"error": "invalid request"})
 			return
 		}
-
+		requestID := c.GetString(REQUEST_ID_KEY)
+		c.Header(REQUEST_ID_HEADER, requestID)
 		c.JSON(consts.StatusCreated, utils.H{"title": request.Title})
 	})
 
