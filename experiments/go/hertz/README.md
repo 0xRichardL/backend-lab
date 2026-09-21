@@ -38,14 +38,14 @@ Use [LEARNING_PLAN.md](LEARNING_PLAN.md) as the topic syllabus and acceptance ch
 
 ## Status
 
-Active. Stages 0–3 are complete and Stage 4, testing workflow, is planned.
+Active. Stages 0–4 are complete and Stage 5, lifecycle and graceful shutdown, is planned.
 
 ## Versions
 
 - Hertz: `v0.10.6`
 - Module language version: Go `1.20` (the minimum declared by Hertz `v0.10.6`)
 - Locally verified toolchain: Go `1.25.6` on macOS/arm64
-- Documentation checked: 2026-09-19
+- Documentation checked: 2026-09-21
 
 ## Scenario
 
@@ -68,6 +68,7 @@ Run commands from this directory.
 ```sh
 go mod download
 go test ./...
+go test -race ./...
 go run .
 ```
 
@@ -86,7 +87,13 @@ Content-Type: application/json; charset=utf-8
 {"status":"ok"}
 ```
 
-Stop the server with `Ctrl-C`. Hertz `v0.9.6` and later handles `SIGINT`, `SIGHUP`, and `SIGTERM` with graceful shutdown.
+This `curl` request is the experiment's manual live-network smoke check. Stop the server with `Ctrl-C`. Hertz `v0.9.6` and later handles `SIGINT`, `SIGHUP`, and `SIGTERM` with graceful shutdown.
+
+## Test boundaries
+
+- Direct handler tests use `ut.CreateUtRequestContext` and call the named handler without routing or middleware. They cover JSON binding, validation, and response construction in isolation.
+- Engine tests use `ut.PerformRequest` to exercise routing, middleware, and handlers together without opening a network port.
+- The manual `curl` check exercises the running server over a real socket. Lifecycle behavior belongs in a live-process test rather than an in-process engine test.
 
 ## Implementation notes
 
@@ -94,6 +101,8 @@ Stop the server with `Ctrl-C`. Hertz `v0.9.6` and later handles `SIGINT`, `SIGHU
 - `server.WithHostPorts` binds the experiment to loopback port `8888`.
 - A handler receives Go's `context.Context` plus Hertz's `*app.RequestContext`.
 - `newServer` keeps route construction separate from `main`, so tests can exercise the routing engine without opening a network port.
+- The create-task handler is named separately from route registration so it can be tested directly.
+- `ut.CreateUtRequestContext` creates a Hertz request context for direct handler tests.
 - `ut.PerformRequest` runs a request through the engine in process, similar in purpose to the standard library's `httptest` utilities.
 - The create-task request uses `json:"title,required"` for presence during binding and `vd:"len($)>0"` for non-empty validation.
 - Server middleware registered with `h.Use` wraps routes registered after it; group middleware applies only to matched routes in that group.
@@ -115,6 +124,8 @@ Stop the server with `Ctrl-C`. Hertz `v0.9.6` and later handles `SIGINT`, `SIGHU
 - Missing, empty, and malformed title inputs can share a stable public error response while `BindAndValidate` handles their different internal failure paths.
 - Middleware around `c.Next(ctx)` runs pre-handler work in registration order and post-handler work in reverse order.
 - Aborting an inner middleware skips pending handlers but still returns control to post-handler work in already-running outer middleware.
+- Direct handler tests isolate binding and response logic, while engine tests provide routing and middleware integration evidence without network transport.
+- The current success and failure paths pass under `go test -race ./...` without an open port or external service.
 
 ### Inferences
 
@@ -131,7 +142,7 @@ Current evidence suggests a concise routing API, explicit binding helpers, compo
 
 ## Verdict
 
-Not enough evidence yet. Complete stages 4–6 in the learning plan before deciding where Hertz fits compared with other Go HTTP frameworks.
+Not enough evidence yet. Complete stages 5–6 in the learning plan before deciding where Hertz fits compared with other Go HTTP frameworks.
 
 ## References
 

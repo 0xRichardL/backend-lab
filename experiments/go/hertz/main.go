@@ -36,16 +36,7 @@ func newServer() *server.Hertz {
 	})
 
 	// Stage 2: BindAndValidate combines JSON binding and tag validation.
-	tasks.POST("", func(_ context.Context, c *app.RequestContext) {
-		var request CreateTaskRequest
-		if err := c.BindAndValidate(&request); err != nil {
-			c.JSON(consts.StatusBadRequest, utils.H{"error": "invalid request"})
-			return
-		}
-		requestID := c.GetString(REQUEST_ID_KEY)
-		c.Header(REQUEST_ID_HEADER, requestID)
-		c.JSON(consts.StatusCreated, utils.H{"title": request.Title})
-	})
+	tasks.POST("", createTask)
 
 	return h
 }

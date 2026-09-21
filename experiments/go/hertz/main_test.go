@@ -29,62 +29,62 @@ func TestRoute_TasksGroup(t *testing.T) {
 	h := newServer()
 
 	type Test struct {
-		Name           string
-		Method         string
-		Path           string
-		ExpectedStatus int
-		ExpectedBody   string
+		name           string
+		method         string
+		path           string
+		expectedStatus int
+		expectedBody   string
 	}
 
 	tests := []Test{
 		{
-			Name:           "static route takes priority",
-			Method:         consts.MethodGet,
-			Path:           "/tasks/recent",
-			ExpectedStatus: consts.StatusOK,
-			ExpectedBody:   `{"tasks":[]}`,
+			name:           "static route takes priority",
+			method:         consts.MethodGet,
+			path:           "/tasks/recent",
+			expectedStatus: consts.StatusOK,
+			expectedBody:   `{"tasks":[]}`,
 		},
 		{
-			Name:           "parameter route captures ID",
-			Method:         consts.MethodGet,
-			Path:           "/tasks/42",
-			ExpectedStatus: consts.StatusOK,
-			ExpectedBody:   `{"id":"42"}`,
+			name:           "parameter route captures ID",
+			method:         consts.MethodGet,
+			path:           "/tasks/42",
+			expectedStatus: consts.StatusOK,
+			expectedBody:   `{"id":"42"}`,
 		},
 		{
-			Name:           "group root is not registered",
-			Method:         consts.MethodGet,
-			Path:           "/tasks/",
-			ExpectedStatus: consts.StatusNotFound,
-			ExpectedBody:   `Not Found`,
+			name:           "group root is not registered",
+			method:         consts.MethodGet,
+			path:           "/tasks/",
+			expectedStatus: consts.StatusNotFound,
+			expectedBody:   `Not Found`,
 		},
 		{
-			Name:           "unsupported method returns not found",
-			Method:         consts.MethodPost,
-			Path:           "/tasks/42",
-			ExpectedStatus: consts.StatusNotFound,
-			ExpectedBody:   `Not Found`,
+			name:           "unsupported method returns not found",
+			method:         consts.MethodPost,
+			path:           "/tasks/42",
+			expectedStatus: consts.StatusNotFound,
+			expectedBody:   `Not Found`,
 		},
 		{
-			Name:           "parameter matches one segment only",
-			Method:         consts.MethodGet,
-			Path:           "/tasks/42/comments",
-			ExpectedStatus: consts.StatusNotFound,
-			ExpectedBody:   `Not Found`,
+			name:           "parameter matches one segment only",
+			method:         consts.MethodGet,
+			path:           "/tasks/42/comments",
+			expectedStatus: consts.StatusNotFound,
+			expectedBody:   `Not Found`,
 		},
 	}
 	for _, test := range tests {
-		t.Run(test.Name, func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			response := ut.PerformRequest(h.Engine,
-				test.Method,
-				test.Path,
+				test.method,
+				test.path,
 				nil,
 				ut.Header{Key: REQUEST_ID_HEADER,
 					Value: "ID-01",
 				}).Result()
 
-			assert.Equal(t, test.ExpectedStatus, response.StatusCode())
-			assert.Equal(t, test.ExpectedBody, string(response.Body()))
+			assert.Equal(t, test.expectedStatus, response.StatusCode())
+			assert.Equal(t, test.expectedBody, string(response.Body()))
 		})
 	}
 }
@@ -94,57 +94,22 @@ func TestRoute_TasksGroup(t *testing.T) {
 func TestRoute_CreateTask(t *testing.T) {
 	h := newServer()
 
-	type Test struct {
-		Name           string
-		Body           string
-		ExpectedStatus int
-		ExpectedBody   string
-	}
+	t.Run("valid task", func(t *testing.T) {
+		body := `{"title":"Learn Hertz"}`
+		response := ut.PerformRequest(
+			h.Engine,
+			consts.MethodPost,
+			"/tasks",
+			&ut.Body{Body: bytes.NewBufferString(body), Len: len(body)},
+			ut.Header{Key: consts.HeaderContentType, Value: consts.MIMEApplicationJSON},
+			ut.Header{Key: REQUEST_ID_HEADER, Value: "ID-01"},
+		).Result()
 
-	tests := []Test{
-		{
-			Name:           "valid task",
-			Body:           `{"title":"Learn Hertz"}`,
-			ExpectedStatus: consts.StatusCreated,
-			ExpectedBody:   `{"title":"Learn Hertz"}`,
-		},
-		{
-			Name:           "missing title",
-			Body:           `{}`,
-			ExpectedStatus: consts.StatusBadRequest,
-			ExpectedBody:   `{"error":"invalid request"}`,
-		},
-		{
-			Name:           "empty title",
-			Body:           `{"title":""}`,
-			ExpectedStatus: consts.StatusBadRequest,
-			ExpectedBody:   `{"error":"invalid request"}`,
-		},
-		{
-			Name:           "malformed JSON",
-			Body:           `{"title":`,
-			ExpectedStatus: consts.StatusBadRequest,
-			ExpectedBody:   `{"error":"invalid request"}`,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.Name, func(t *testing.T) {
-			body := &ut.Body{Body: bytes.NewBufferString(test.Body), Len: len(test.Body)}
-			response := ut.PerformRequest(
-				h.Engine,
-				consts.MethodPost,
-				"/tasks",
-				body,
-				ut.Header{Key: consts.HeaderContentType, Value: consts.MIMEApplicationJSON},
-				ut.Header{Key: REQUEST_ID_HEADER, Value: "ID-01"},
-			).Result()
-
-			assert.Equal(t, test.ExpectedStatus, response.StatusCode())
-			assert.Equal(t, consts.MIMEApplicationJSONUTF8, string(response.Header.ContentType()))
-			assert.Equal(t, test.ExpectedBody, string(response.Body()))
-		})
-	}
+		assert.Equal(t, consts.StatusCreated, response.StatusCode())
+		assert.Equal(t, consts.MIMEApplicationJSONUTF8, string(response.Header.ContentType()))
+		assert.Equal(t, `{"title":"Learn Hertz"}`, string(response.Body()))
+		assert.Equal(t, "ID-01", response.Header.Get(REQUEST_ID_HEADER))
+	})
 }
 
 // Stage 3: middleware behavior and request-scoped values.
@@ -188,24 +153,6 @@ func TestMiddleware_RequestID(t *testing.T) {
 
 		assert.Equal(t, consts.StatusBadRequest, response.StatusCode())
 		assert.JSONEq(t, `{"error":"missing request ID"}`, string(response.Body()))
-	})
-
-	t.Run("request ID send back in response", func(t *testing.T) {
-		bodyStr := `{"title":"Learn Hertz"}`
-		body := &ut.Body{Body: bytes.NewBufferString(bodyStr), Len: len(bodyStr)}
-		requestID := "ID-01"
-		response := ut.PerformRequest(
-			h.Engine,
-			consts.MethodPost,
-			"/tasks",
-			body,
-			ut.Header{Key: consts.HeaderContentType, Value: consts.MIMEApplicationJSON},
-			ut.Header{Key: REQUEST_ID_HEADER, Value: requestID},
-		).Result()
-		respRequestID := response.Header.Get(REQUEST_ID_HEADER)
-
-		assert.NotEmpty(t, respRequestID)
-		assert.Equal(t, requestID, respRequestID)
 	})
 
 	t.Run("Health route doesn't require request ID", func(t *testing.T) {

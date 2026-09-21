@@ -42,7 +42,7 @@ The [README teaching guide](README.md#teaching-guide-for-agents) controls lesson
 
 **Reference:** [Middleware](https://www.cloudwego.io/docs/hertz/tutorials/basic-feature/middleware/).
 
-## Stage 4 — Testing workflow — planned
+## Stage 4 — Testing workflow — complete
 
 **Question:** Which behavior belongs in direct handler tests, engine tests, and live network tests?
 
