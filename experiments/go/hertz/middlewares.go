@@ -9,7 +9,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
-// Stage 3: middleware, post-handler work, and request-scoped values.
+// Middleware, post-handler work, and request-scoped values.
 
 const RESPONSE_TIME_HEADER = "X-Response-Time"
 

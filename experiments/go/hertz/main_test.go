@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Stage 0: baseline route behavior.
+// Baseline route behavior.
 
 func TestRoute_Health(t *testing.T) {
 	h := newServer()
@@ -23,7 +23,7 @@ func TestRoute_Health(t *testing.T) {
 	assert.Equal(t, `{"status":"ok"}`, string(response.Body()))
 }
 
-// Stage 1: route matching, precedence, parameters, and missing routes.
+// Route matching, precedence, parameters, and missing routes.
 
 func TestRoute_TasksGroup(t *testing.T) {
 	h := newServer()
@@ -89,7 +89,7 @@ func TestRoute_TasksGroup(t *testing.T) {
 	}
 }
 
-// Stage 2: JSON binding, validation, and stable public errors.
+// JSON binding, validation, and stable public errors.
 
 func TestRoute_CreateTask(t *testing.T) {
 	h := newServer()
@@ -112,7 +112,7 @@ func TestRoute_CreateTask(t *testing.T) {
 	})
 }
 
-// Stage 3: middleware behavior and request-scoped values.
+// Middleware behavior and request-scoped values.
 
 func TestMiddleware_RequestTiming(t *testing.T) {
 	h := newServer()

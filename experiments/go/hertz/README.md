@@ -1,69 +1,40 @@
 # Hertz experiment
 
-## Teaching guide for agents
-
-Use this protocol whenever teaching, reviewing, or modifying this experiment.
-
-### Audience and pace
-
-- Assume the learner is a senior backend engineer who already understands Go, HTTP, routing, middleware, testing, and service lifecycle concepts.
-- Focus on Hertz-specific APIs, behavior, defaults, and trade-offs. Do not reteach basic language or backend concepts.
-- Teach one cohesive vertical slice per iteration. Pause for the learner once, after giving them a meaningful implementation task; do not turn every API call into a separate checkpoint.
-- Do not require predictions or learning-log entries unless they would reveal a genuinely uncertain or surprising framework behavior.
-
-### Teaching sequence
-
-For each vertical slice:
-
-1. State the capability and why it matters in the current experiment.
-2. Extract at most five essential Hertz mechanics from the relevant official documentation. Link the exact documentation as an optional reference instead of asking the learner to read it end to end.
-3. Show a complete adjacent example that includes its types, containing function, route or middleware registration, and required imports. Never send an orphan code fragment without explaining where it belongs.
-4. Give the learner one focused implementation task with explicit behavior and acceptance checks.
-5. Review the learner's actual diff and run the narrowest relevant checks.
-6. Report findings first and propose exact corrections, but do not edit the learner's code unless they explicitly request implementation.
-7. After the implementation passes, give only relevant improvements, advanced options, and production notes.
-
-### Comparisons and sources
-
-- Hertz is the focus. Mention Gin or Echo only when one short analogy materially accelerates understanding.
-- Use whichever framework has the closest semantics; do not compare against both by default and do not force a mapping where behavior differs.
-- Separate verified Hertz behavior, defaults observed in this experiment, inferences, and production recommendations.
-- Prefer current official documentation and source code. Keep links available for depth, but present the useful technique directly in the lesson.
-
 ## Research question
 
-How does Hertz structure a small HTTP service, and what are the developer-experience trade-offs of its routing, request context, validation, middleware, testing, shutdown, and `hz` code generation?
-
-Use [LEARNING_PLAN.md](LEARNING_PLAN.md) as the topic syllabus and acceptance checklist. This README controls how those topics are taught.
+How does Hertz structure a small HTTP service, and what are the developer-experience trade-offs of its routing, request context, validation, middleware, testing, lifecycle, and `hz` code generation?
 
 ## Status
 
-Active. Stages 0–4 are complete and Stage 5, lifecycle and graceful shutdown, is planned.
+**Active.** The hand-written HTTP API and live-process shutdown investigation are implemented. Broker-coordinated shutdown, `hz` generation, operational visibility, and the final verdict remain open.
+
+Learning is organized separately in [HERTZ_GUIDE.md](HERTZ_GUIDE.md), with durable state in [HERTZ_PROGRESS.md](HERTZ_PROGRESS.md).
 
 ## Versions
 
 - Hertz: `v0.10.6`
-- Module language version: Go `1.20` (the minimum declared by Hertz `v0.10.6`)
+- Module language version: Go `1.20`, the minimum declared by Hertz `v0.10.6`
 - Locally verified toolchain: Go `1.25.6` on macOS/arm64
-- Documentation checked: 2026-09-21
+- Official documentation checked: 2026-10-06
 
 ## Scenario
 
-Build a small in-memory task API in vertical steps:
+The experiment implements a small in-memory task API:
 
-- `GET /health`
-- `POST /tasks` with JSON binding and validation
-- `GET /tasks/:id` with a path parameter
-- consistent JSON errors
-- request timing middleware
-- in-process handler tests
-- graceful shutdown behavior
+| Method | Path | Purpose | Important behavior |
+| --- | --- | --- | --- |
+| `GET` | `/health` | Liveness response | Does not require a request ID. |
+| `GET` | `/tasks/recent` | Static route in the task group | Demonstrates precedence over `/:id`. |
+| `GET` | `/tasks/:id` | Parameterized route | Captures exactly one path segment. |
+| `POST` | `/tasks` | Bind and validate JSON | Requires `X-Request-ID`; returns a stable public validation error. |
+| `GET` | `/grateful/slow` | Shutdown diagnostic | Simulates 10 seconds of in-flight work. |
+| `GET` | `/grateful/exceed` | Shutdown diagnostic | Simulates 35 seconds of in-flight work. |
 
-No database, authentication, container, or external service is needed for this research question.
+The task API has no database or authentication. The diagnostic routes use `time.Sleep` to isolate HTTP lifecycle behavior; they are not production endpoints or background workers.
 
 ## Setup and commands
 
-Run commands from this directory.
+Run all commands from this directory.
 
 ```sh
 go mod download
@@ -72,77 +43,123 @@ go test -race ./...
 go run .
 ```
 
-In another terminal:
+The server listens on `127.0.0.1:8888`.
+
+### Live smoke checks
+
+Health:
 
 ```sh
 curl -i http://127.0.0.1:8888/health
 ```
 
-Expected response:
+Create a valid task:
 
-```text
-HTTP/1.1 200 OK
-Content-Type: application/json; charset=utf-8
-
-{"status":"ok"}
+```sh
+curl -i \
+  -H 'Content-Type: application/json' \
+  -H 'X-Request-ID: smoke-01' \
+  -d '{"title":"Learn Hertz"}' \
+  http://127.0.0.1:8888/tasks
 ```
 
-This `curl` request is the experiment's manual live-network smoke check. Stop the server with `Ctrl-C`. Hertz `v0.9.6` and later handles `SIGINT`, `SIGHUP`, and `SIGTERM` with graceful shutdown.
+Expected task response:
 
-## Test boundaries
+```text
+HTTP/1.1 201 Created
+Content-Type: application/json; charset=utf-8
+X-Request-ID: smoke-01
 
-- Direct handler tests use `ut.CreateUtRequestContext` and call the named handler without routing or middleware. They cover JSON binding, validation, and response construction in isolation.
-- Engine tests use `ut.PerformRequest` to exercise routing, middleware, and handlers together without opening a network port.
-- The manual `curl` check exercises the running server over a real socket. Lifecycle behavior belongs in a live-process test rather than an in-process engine test.
+{"title":"Learn Hertz"}
+```
+
+### Graceful-shutdown reproduction
+
+Build a binary so the signal targets Hertz rather than a `go run` wrapper:
+
+```sh
+go build -o /tmp/hertz-lifecycle .
+/tmp/hertz-lifecycle
+```
+
+In another terminal, start one diagnostic request and send `SIGTERM` about one second later. Restart the binary before testing the other path.
+
+```sh
+server_pid=$(pgrep -f '^/tmp/hertz-lifecycle$')
+curl -sS -i --max-time 45 -w '\nrequest_duration=%{time_total}s\n' \
+  http://127.0.0.1:8888/grateful/slow &
+request_pid=$!
+sleep 1
+kill -TERM "$server_pid"
+wait "$request_pid"
+```
+
+Replace `/grateful/slow` with `/grateful/exceed` for the over-budget case. While shutdown is in progress, this command checks whether the listener still accepts new connections:
+
+```sh
+curl -i --max-time 2 http://127.0.0.1:8888/health
+```
 
 ## Implementation notes
 
-- `server.Default` provides Hertz's default engine and middleware.
+- `server.Default` creates the engine with Hertz's recovery middleware.
 - `server.WithHostPorts` binds the experiment to loopback port `8888`.
-- A handler receives Go's `context.Context` plus Hertz's `*app.RequestContext`.
-- `newServer` keeps route construction separate from `main`, so tests can exercise the routing engine without opening a network port.
-- The create-task handler is named separately from route registration so it can be tested directly.
-- `ut.CreateUtRequestContext` creates a Hertz request context for direct handler tests.
-- `ut.PerformRequest` runs a request through the engine in process, similar in purpose to the standard library's `httptest` utilities.
-- The create-task request uses `json:"title,required"` for presence during binding and `vd:"len($)>0"` for non-empty validation.
-- Server middleware registered with `h.Use` wraps routes registered after it; group middleware applies only to matched routes in that group.
-- `RequestContext.Set` and `GetString` propagate the request ID within the request lifecycle.
+- `server.WithExitWaitTime(30*time.Second)` bounds graceful shutdown. The budget begins when Hertz receives the termination signal.
+- `newServer` separates engine construction from `main`, allowing route and middleware tests without opening a port.
+- Handlers receive Go's `context.Context` and Hertz's pooled `*app.RequestContext`.
+- `POST /tasks` uses `json:"title,required"` for field presence and `vd:"len($)>0"` for non-empty validation.
+- Global timing middleware wraps all matched routes. Task-group middleware requires and stores `X-Request-ID` in the request context.
+- `ut.CreateUtRequestContext` supports direct handler tests; `ut.PerformRequest` exercises the engine, routes, middleware, and handlers in process.
+- Lifecycle behavior is verified with a compiled process and real signal because in-process engine tests do not exercise OS signal handling or sockets.
 
 ## Findings
 
 ### Facts
 
-- Hertz is an HTTP framework for Go. It uses Netpoll by default and can switch to the Go standard network implementation.
-- Routes are registered with methods such as `GET`, `POST`, and `PUT`; route groups and path parameters are built in.
-- Binding and validation are exposed through `RequestContext`, including `BindAndValidate`, `BindJSON`, `BindQuery`, and related methods.
-- `hz` can generate project scaffolding from Thrift or Protobuf IDL. It is intentionally deferred until the hand-written API is understood.
+- Hertz provides grouped, static, parameterized, and wildcard routes. Static routes take precedence over parameterized routes.
+- Binding and validation are available through `RequestContext`, including `BindAndValidate`.
+- Middleware can run work before and after `c.Next(ctx)` and can abort the remaining handler chain.
+- In Hertz `v0.10.6`, `Spin()` handles `SIGINT`, `SIGHUP`, and `SIGTERM` with graceful shutdown.
+- `WithExitWaitTime` defines the maximum graceful-shutdown wait; it does not make handler work cancellable or guarantee completion.
+- `hz` can generate Hertz projects from Thrift or Protobuf IDL. This experiment has not evaluated its generation and regeneration workflow yet.
 
 ### Observations
 
-- The smallest server needs one engine, one route, and `Spin()`.
-- Separating engine construction makes a route test small and avoids listening on a real port.
-- Missing, empty, and malformed title inputs can share a stable public error response while `BindAndValidate` handles their different internal failure paths.
-- Middleware around `c.Next(ctx)` runs pre-handler work in registration order and post-handler work in reverse order.
-- Aborting an inner middleware skips pending handlers but still returns control to post-handler work in already-running outer middleware.
-- Direct handler tests isolate binding and response logic, while engine tests provide routing and middleware integration evidence without network transport.
-- The current success and failure paths pass under `go test -race ./...` without an open port or external service.
+- The minimum service needs an engine, a registered route, and `Spin()`.
+- A separately constructed engine makes route and middleware integration tests small and avoids a network listener.
+- Missing, empty, and malformed task titles share the public response `{"error":"invalid request"}` while `BindAndValidate` handles their different internal failure paths.
+- Middleware around `c.Next(ctx)` executes pre-handler work in registration order and post-handler work in reverse order.
+- Aborting inner middleware skips pending handlers but returns control to post-handler work in already-running outer middleware.
+- Direct handler tests isolate binding and response construction; engine tests add routing and middleware without network transport.
+- The implemented success and failure paths pass under `go test -race ./...`.
+
+The lifecycle observations below were reproduced on 2026-09-21 with a 30-second shutdown budget and `SIGTERM` sent about one second after each request began:
+
+- `/grateful/slow` completed in `10.003499s` with `200`, `{"status":"ok"}`, and `Connection: close`.
+- `/grateful/exceed` ended in `31.003743s` with `curl: (52) Empty reply from server`; its handler-exit log did not appear before process exit.
+- A new `/health` connection attempted during shutdown failed with `curl: (7)`, showing that the listener was no longer accepting connections.
+- A separate `/grateful/exceed` run returned `200` when `SIGTERM` arrived about six seconds into the handler because the remaining work fit inside the 30-second shutdown budget.
 
 ### Inferences
 
-- Hertz will feel familiar to developers who have used Gin or Echo, but its own `RequestContext`, test utilities, network layer, and generated-code workflow deserve direct study.
-- A tiny hand-written API should make it easier to judge what `hz` adds or obscures later.
+- Hertz's core HTTP API is concise and familiar, but its `RequestContext`, test utilities, Netpoll default, and generated-code workflow require framework-specific evaluation.
+- The shutdown deadline is measured from signal receipt, not request start; deployment budgets must account for the maximum remaining work at that moment.
+- An empty HTTP reply does not prove that a real business side effect failed. Persistence, acknowledgements, retries, and idempotency require a separate experiment.
 
 ### Opinions
 
-- Starting without `hz` is the clearest learning path because it exposes the framework's core API before generated structure is introduced.
+- Starting with a hand-written API is the clearest way to understand Hertz before evaluating `hz`.
+- Keeping one direct-handler layer, one in-process engine layer, and a small number of live-process checks gives useful evidence without unnecessary test infrastructure.
 
 ## Strengths and limitations
 
-Current evidence suggests a concise routing API, explicit binding helpers, composable middleware, and first-party in-process test support. The experiment remains an in-memory API, so it does not yet support conclusions about lifecycle behavior, generated code, production operations, or performance.
+For this small service, Hertz provides concise routing, explicit binding helpers, composable middleware, first-party in-process test utilities, and bounded graceful shutdown.
+
+The evidence remains intentionally narrow. The API is in memory, the lifecycle probes simulate work with sleeps, and the experiment has not yet evaluated persistence, broker consumers, `hz` regeneration, observability integrations, deployment configuration, or performance. The current results do not support cross-framework ranking.
 
 ## Verdict
 
-Not enough evidence yet. Complete stages 5–6 in the learning plan before deciding where Hertz fits compared with other Go HTTP frameworks.
+**Provisional.** Hertz is straightforward for a small Go HTTP API and exposes useful framework-level testing and lifecycle controls. A recommendation for production use still depends on the unfinished broker-lifecycle, `hz`, and observability investigations. Performance claims are explicitly out of scope until measured with a fair workload.
 
 ## References
 
@@ -153,5 +170,5 @@ Not enough evidence yet. Complete stages 5–6 in the learning plan before decid
 - [Middleware](https://www.cloudwego.io/docs/hertz/tutorials/basic-feature/middleware/)
 - [Unit testing](https://www.cloudwego.io/docs/hertz/tutorials/basic-feature/unit-test/)
 - [Graceful shutdown](https://www.cloudwego.io/docs/hertz/tutorials/basic-feature/graceful-shutdown/)
-- [`hz` installation and operation](https://www.cloudwego.io/docs/hertz/tutorials/toolkit/install/)
+- [`hz` code generation](https://www.cloudwego.io/docs/hertz/tutorials/toolkit/)
 - [Hertz releases](https://github.com/cloudwego/hertz/releases)
