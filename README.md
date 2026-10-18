@@ -13,17 +13,20 @@ backend-lab/
 │   ├── building.md
 │   ├── review.md
 │   └── verification.md
+├── topics/
+│   └── oauth2.md
 └── experiments/
     └── go/
         └── hertz/
 ```
 
 - [Hertz experiment](experiments/go/hertz/README.md) is active; its README records its question, commands, evidence, and remaining work.
+- [OAuth 2.0 research](topics/oauth2.md) explains the authorization code flow with PKCE and the client, system, and provider boundaries.
 - [Agent guidance](AGENTS.md) contains standing rules and links to the task-specific workflows.
 
 Future experiments belong under `experiments/<language>/<experiment>/`, with their own dependency files, source, tests, and README. Use lowercase kebab-case directory names unless the language ecosystem strongly prefers another convention.
 
-Platform-agnostic learning and research notes belong under `topics/<topic>.md`, such as `topics/oauth2.md`. Keep runnable implementations in `experiments/`. Add `scenarios/<scenario>.md` when a language-neutral behavior contract is needed, and `docs/comparisons.md` when completed experiments provide comparable evidence. These paths do not exist yet. A scenario defines inputs, outputs, failure behavior, and acceptance checks without prescribing framework architecture.
+Platform-agnostic learning and research notes belong under `topics/<topic>.md`. Keep runnable implementations in `experiments/`. Add `scenarios/<scenario>.md` when a language-neutral behavior contract is needed, and `docs/comparisons.md` when completed experiments provide comparable evidence. The `scenarios/` and comparison paths do not exist yet. A scenario defines inputs, outputs, failure behavior, and acceptance checks without prescribing framework architecture.
 
 ## Experiment README contract
 
