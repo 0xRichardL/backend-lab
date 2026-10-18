@@ -1,0 +1,6 @@
+interface:
+  display_name: "Run Learning Guide"
+  short_description: "Teach and resume a saved learning guide"
+  default_prompt: "Use $run-learning-guide to start or resume my saved learning guide."
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Build Learning Guide"
+  short_description: "Create concise, time-boxed learning guides"
+  default_prompt: "Use $build-learning-guide to create a concise, time-boxed guide for my learning target."
+policy:
+  allow_implicit_invocation: false

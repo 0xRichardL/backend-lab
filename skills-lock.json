@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "build-learning-guide": {
+      "source": "0xRichardL/skills",
+      "sourceType": "github",
+      "skillPath": "skills/build-learning-guide/SKILL.md",
+      "computedHash": "a2f8f844b7364e2b4df9e529068a38f2c2a8a6527ecab646bc6acc7d86cd8e3e"
+    },
+    "run-learning-guide": {
+      "source": "0xRichardL/skills",
+      "sourceType": "github",
+      "skillPath": "skills/run-learning-guide/SKILL.md",
+      "computedHash": "c43e2ff6bc54138f77d62e0462589e09684e0613a6a621cc2ad3093cacaccc3e"
+    }
+  }
+}
