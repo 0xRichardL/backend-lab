@@ -17,7 +17,11 @@ The prior demonstration had left `todos` and `alembic_version` in local Postgres
 5. `uv run --locked alembic init -t async alembic` generated `alembic.ini`, `alembic/env.py`, `alembic/script.py.mako`, `alembic/README`, and an empty `alembic/versions` directory.
 6. `cat alembic.ini alembic/env.py alembic/README alembic/script.py.mako` showed the unedited starter files. The generated `env.py` has `target_metadata = None`, and `alembic.ini` has a placeholder `sqlalchemy.url`.
 7. Edited `alembic/env.py` to use `Base.metadata` for autogenerate and the app's `database_url()` for both offline and online migrations. The online path creates an async engine directly, so the placeholder URL in `alembic.ini` is not used. `cat alembic/env.py` showed the resulting file.
+8. `uv run --locked --env-file .env alembic revision --autogenerate -m "create todos"` detected one added table and wrote `alembic/versions/8d8b678efb5f_create_todos.py`. Inspection showed an initial revision (`down_revision = None`) whose `upgrade()` creates `todos` with non-null `id`, `title`, and `completed`, a primary key on `id`, and a server default of `false` for `completed`. `downgrade()` drops the table. This is a generated candidate; it has not been applied.
+9. `.venv/bin/ruff format alembic/versions/8d8b678efb5f_create_todos.py` reformatted the generated candidate. Inspection confirmed the operations remained the same.
+10. `uv run --locked --env-file .env alembic upgrade head` applied revision `8d8b678efb5f` to the fresh local Postgres database.
+11. A read-only `psql` inspection showed `todos(id integer primary key, title text not null, completed boolean not null default false)`, `alembic_version.version_num = 8d8b678efb5f`, and zero todo rows.
 
 ## Next step
 
-Pass credentials from the ignored `.env` to Alembic with `uv run --env-file .env`. Generate the initial revision and inspect its operations before applying it.
+Document the repeatable migration command in the experiment README, run the relevant local checks, and commit LG-06's revision and documentation.

@@ -1,7 +1,7 @@
 # Learning Progress: FastAPI–SQLAlchemy–Postgres
 
 > Guide: [FASTAPI_SQLALCHEMY_POSTGRES_GUIDE.md](./FASTAPI_SQLALCHEMY_POSTGRES_GUIDE.md)
-> Last updated: 2026-10-23 09:37 +07:00
+> Last updated: 2026-10-23 10:22 +07:00
 
 ## Status
 
@@ -10,7 +10,7 @@
 | Overall status | in progress |
 | Accumulated reported active time | 0 minutes |
 | Current unit | LG-06 — Apply the initial migration (`in progress`) |
-| Next action | Run the shown autogenerate command with `.env`, then show the generated revision before editing or applying it. |
+| Next action | Document the repeatable migration command in the experiment README, run LG-06's relevant checks, then commit the revision, notes, README, and progress before LG-07. |
 
 ## Unit checklist
 
@@ -42,6 +42,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - LG-04: learner correctly explained that `create_async_engine(...)` does not open a connection and `engine.connect()` fails if Postgres is unavailable.
 - LG-04: learner identified `asyncpg` as the driver and, after clarification, `postgresql` as the PostgreSQL dialect in the URL. The successful `SELECT 1` connection check and credential source were shown in the prior session.
 - LG-05: learner correctly identified `server_default=text("false")` as the source of Postgres `DEFAULT false` for a direct insert that omits `completed`, distinct from the Pydantic input default.
+- LG-06: the reviewed initial revision was applied to fresh local Postgres. `\d todos` showed `id` as an integer primary key, `title` as non-null text, and `completed` as non-null boolean with default `false`. `alembic_version` recorded `8d8b678efb5f`; `todos` had zero rows.
 
 ### Recent misconceptions or fragile knowledge
 
@@ -61,7 +62,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 
 ### Exact re-entry prompt
 
-> The fresh Postgres `public` schema has zero tables. Alembic 1.20.1 is a development dependency. The async starter files were generated and shown. `alembic/env.py` now uses `database_url()` and `Base.metadata`, and its full contents were shown. Next run `uv run --locked --env-file .env alembic revision --autogenerate -m "create todos"`, then show the generated revision before editing or applying it. Continue one step per turn and show every command before running it.
+> Alembic autogenerate produced initial revision `8d8b678efb5f_create_todos.py` from the empty Postgres schema. It was reviewed and formatted, then `upgrade head` applied it. Postgres inspection confirmed the expected table, version row, and zero todo rows. Next document the repeatable migration command in the experiment README, run relevant checks, and commit the LG-06 files plus progress before LG-07. Show every command before running it and continue one step per turn.
 
 ## Adaptations
 
@@ -96,10 +97,10 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 
 ### Session 3 — 2026-10-23 (in progress)
 
-- Planned time: available until 10:00 AM, starting around 8:24 AM (about 1 hour 36 minutes).
+- Planned time: started around 8:24 AM with an initial 10:00 AM cutoff; learner extended the same session by 90 minutes at 10:22 AM, giving a new cutoff around 11:52 AM.
 - Actual active time: not reported.
 - Units worked: LG-04 and LG-05 completed; LG-06 remains not started in the current checkpoint.
 - Learner evidence: distinguished `postgresql` dialect from `asyncpg` driver and engine creation from first connection; identified `server_default=text("false")` as the Postgres default for a direct insert that omits `completed`.
-- Demonstration and file state: `models.py` and `TODO_TABLE_MAPPING.md` remain. An initial Alembic revision was applied to local Postgres, but its setup files, dependency, Makefile target, and completed-migration documentation were removed. The local `todos` and `alembic_version` tables remain to be inspected before LG-06 proceeds.
+- Demonstration and file state: `models.py` and `TODO_TABLE_MAPPING.md` remain. The discarded migration's Postgres volume was removed at the learner's request, and fresh Postgres has an empty `public` schema. Alembic was added, its async starter files were generated and configured, and the setup was committed as `d2270bf`. No new revision has been generated or applied yet.
 - Teaching preference: work through each file and each change separately, showing the observed result before continuing. Generated lockfile contents do not need a walkthrough.
-- Next prompt: Inspect the existing local Postgres `todos` and `alembic_version` tables; show the result and stop before changing the database or files.
+- Next prompt: Show and run `uv run --locked --env-file .env alembic revision --autogenerate -m "create todos"`; inspect the generated revision before applying it. Show every command before running it.
