@@ -9,8 +9,8 @@
 | --- | --- |
 | Overall status | in progress |
 | Accumulated reported active time | 0 minutes |
-| Current unit | LG-05 — Map the todo table (`completed`) |
-| Next action | Begin LG-06 from scratch, one step at a time. First inspect the existing Postgres `todos` and `alembic_version` tables from the discarded demonstration; stop and discuss the result before changing the database or files. |
+| Current unit | LG-06 — Apply the initial migration (`in progress`) |
+| Next action | Run the shown autogenerate command with `.env`, then show the generated revision before editing or applying it. |
 
 ## Unit checklist
 
@@ -21,7 +21,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - [x] LG-03 — Define the todo API contract — `completed`
 - [x] LG-04 — Configure Postgres access — `completed`
 - [x] LG-05 — Map the todo table — `completed`
-- [ ] LG-06 — Apply the initial migration — `not started`
+- [ ] LG-06 — Apply the initial migration — `in progress`
 - [ ] LG-07 — Give each request an async session — `not started`
 - [ ] LG-08 — Create a todo — `not started`
 - [ ] LG-09 — List and read todos — `not started`
@@ -49,7 +49,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 
 ### Incomplete knowledge or work
 
-- No LG-05 work remains. A discarded LG-06 demonstration left `todos` and `alembic_version` in local Postgres. Its file changes were removed; inspect the database state before restarting LG-06.
+- No LG-05 work remains. Read-only inspection found `todos` and `alembic_version` in local Postgres. `alembic_version` contained `2628f7aaa40d`; `todos` had `id`, `title`, and `completed` columns and zero rows. The migration files were removed in the discarded demonstration. The learner requested a fresh start, and `docker compose down --volumes` removed this experiment's container and named Postgres volume. `make db-up` then created a fresh healthy container and volume; read-only inspection of `public` returned zero tables. `uv add --dev alembic` added Alembic 1.20.1 to the experiment and updated the lockfile. `uv run --locked alembic init -t async alembic` generated `alembic.ini`, `alembic/env.py`, `alembic/script.py.mako`, `alembic/README`, and an empty `alembic/versions` directory; all generated file contents were shown before editing.
 
 ### Open questions
 
@@ -61,12 +61,14 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 
 ### Exact re-entry prompt
 
-> LG-05 is completed: the learner identified `server_default=text("false")` as the Postgres default for an omitted `completed` column. To start LG-06, first inspect the existing local Postgres `todos` and `alembic_version` tables left by a discarded demonstration. Show the result and stop before any change. Then continue the Alembic demonstration one step at a time.
+> The fresh Postgres `public` schema has zero tables. Alembic 1.20.1 is a development dependency. The async starter files were generated and shown. `alembic/env.py` now uses `database_url()` and `Base.metadata`, and its full contents were shown. Next run `uv run --locked --env-file .env alembic revision --autogenerate -m "create todos"`, then show the generated revision before editing or applying it. Continue one step per turn and show every command before running it.
 
 ## Adaptations
 
 - For LG-06, show one file or command change and its observed result per turn, then stop for discussion before the next change. Show generated files before editing them. Skip generated lockfile contents during the file walkthrough; its role is already understood.
 - After each Learning Item's mastery evidence is demonstrated and its relevant checks pass, commit that item's files and progress update before starting the next Learning Item. Keep commits scoped to the completed item.
+- The learner knows the general migration-tool pattern and asked to skip generic concept-check questions. Focus LG-06 on the specific Alembic files, commands, and observed Postgres result; verify mastery through the demonstrated artifact and a concise explanation only where it adds value.
+- Show every shell command to the learner before running it, then show its relevant output.
 
 ## Session log
 
