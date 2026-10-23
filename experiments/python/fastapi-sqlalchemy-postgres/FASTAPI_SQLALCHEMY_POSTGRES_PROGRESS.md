@@ -1,7 +1,7 @@
 # Learning Progress: FastAPI–SQLAlchemy–Postgres
 
 > Guide: [FASTAPI_SQLALCHEMY_POSTGRES_GUIDE.md](./FASTAPI_SQLALCHEMY_POSTGRES_GUIDE.md)
-> Last updated: 2026-10-22 16:03 +07:00
+> Last updated: 2026-10-23 09:37 +07:00
 
 ## Status
 
@@ -9,8 +9,8 @@
 | --- | --- |
 | Overall status | in progress |
 | Accumulated reported active time | 0 minutes |
-| Current unit | LG-04 — Configure Postgres access |
-| Next action | Recheck that `postgresql` names the database dialect, `asyncpg` names the async Python driver, and `engine.connect()` is the first real connection attempt; then explain which line fails when Postgres is down. |
+| Current unit | LG-05 — Map the todo table (`completed`) |
+| Next action | Begin LG-06 from scratch, one step at a time. First inspect the existing Postgres `todos` and `alembic_version` tables from the discarded demonstration; stop and discuss the result before changing the database or files. |
 
 ## Unit checklist
 
@@ -19,8 +19,8 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - [x] LG-01 — Create the uv project — `completed`
 - [x] LG-02 — Run the first FastAPI endpoint — `completed`
 - [x] LG-03 — Define the todo API contract — `completed`
-- [ ] LG-04 — Configure Postgres access — `in progress`
-- [ ] LG-05 — Map the todo table — `not started`
+- [x] LG-04 — Configure Postgres access — `completed`
+- [x] LG-05 — Map the todo table — `completed`
 - [ ] LG-06 — Apply the initial migration — `not started`
 - [ ] LG-07 — Give each request an async session — `not started`
 - [ ] LG-08 — Create a todo — `not started`
@@ -39,14 +39,17 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - LG-02: learner correctly identified the `{"status":"ok"}` JSON body and HTTP 200 status.
 - LG-02: learner saw Swagger UI list `GET /health` and explained that the decorator registers the route at startup while `health()` runs on a request.
 - LG-03: learner correctly identified create and update input models, their defaults and title constraint, and explained that `TodoRead` omits an extra field because it is not declared in the response model.
+- LG-04: learner correctly explained that `create_async_engine(...)` does not open a connection and `engine.connect()` fails if Postgres is unavailable.
+- LG-04: learner identified `asyncpg` as the driver and, after clarification, `postgresql` as the PostgreSQL dialect in the URL. The successful `SELECT 1` connection check and credential source were shown in the prior session.
+- LG-05: learner correctly identified `server_default=text("false")` as the source of Postgres `DEFAULT false` for a direct insert that omits `completed`, distinct from the Pydantic input default.
 
 ### Recent misconceptions or fragile knowledge
 
-- None observed.
+- None currently observed.
 
 ### Incomplete knowledge or work
 
-- LG-04: learner authorized Docker Compose. Added `compose.yaml`, ignored local `.env`, `.env.example`, and `database.py`; installed SQLAlchemy 2.0.55 with its asyncio extra and asyncpg 0.32.0. Docker Desktop and the Postgres 17 container started; Compose health check passed. `make db-check` ran `SELECT 1` through the async engine and returned 1. Learner identified `.env` as the credential source and named `check_connection()` as the failure area, but still needs to identify `asyncpg` as the async Python driver and `engine.connect()` as the precise first connection attempt. The container was stopped with `docker compose down`; its named volume remains.
+- No LG-05 work remains. A discarded LG-06 demonstration left `todos` and `alembic_version` in local Postgres. Its file changes were removed; inspect the database state before restarting LG-06.
 
 ### Open questions
 
@@ -54,15 +57,16 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 
 ### Retrieval prompts
 
-- Can the learner distinguish engine construction from `engine.connect()` and identify the async driver?
+- None for LG-05; its mastery evidence was demonstrated.
 
 ### Exact re-entry prompt
 
-> In `database.py`, what does each part of `postgresql+asyncpg` name? If Postgres is down, does `create_async_engine(...)` or `engine.connect()` fail first, and why?
+> LG-05 is completed: the learner identified `server_default=text("false")` as the Postgres default for an omitted `completed` column. To start LG-06, first inspect the existing local Postgres `todos` and `alembic_version` tables left by a discarded demonstration. Show the result and stop before any change. Then continue the Alembic demonstration one step at a time.
 
 ## Adaptations
 
-- None.
+- For LG-06, show one file or command change and its observed result per turn, then stop for discussion before the next change. Show generated files before editing them. Skip generated lockfile contents during the file walkthrough; its role is already understood.
+- After each Learning Item's mastery evidence is demonstrated and its relevant checks pass, commit that item's files and progress update before starting the next Learning Item. Keep commits scoped to the completed item.
 
 ## Session log
 
@@ -87,3 +91,13 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - Unresolved work: explain the URL's dialect and driver, and point to `engine.connect()` as the first operation that fails when Postgres is down.
 - Demonstration: Postgres 17 via Docker Compose was healthy; `make db-check` returned `SELECT 1 returned 1`; Ruff passed. The container was stopped while preserving its data volume.
 - Next prompt: In `database.py`, what does each part of `postgresql+asyncpg` name? If Postgres is down, does `create_async_engine(...)` or `engine.connect()` fail first, and why?
+
+### Session 3 — 2026-10-23 (in progress)
+
+- Planned time: available until 10:00 AM, starting around 8:24 AM (about 1 hour 36 minutes).
+- Actual active time: not reported.
+- Units worked: LG-04 and LG-05 completed; LG-06 remains not started in the current checkpoint.
+- Learner evidence: distinguished `postgresql` dialect from `asyncpg` driver and engine creation from first connection; identified `server_default=text("false")` as the Postgres default for a direct insert that omits `completed`.
+- Demonstration and file state: `models.py` and `TODO_TABLE_MAPPING.md` remain. An initial Alembic revision was applied to local Postgres, but its setup files, dependency, Makefile target, and completed-migration documentation were removed. The local `todos` and `alembic_version` tables remain to be inspected before LG-06 proceeds.
+- Teaching preference: work through each file and each change separately, showing the observed result before continuing. Generated lockfile contents do not need a walkthrough.
+- Next prompt: Inspect the existing local Postgres `todos` and `alembic_version` tables; show the result and stop before changing the database or files.
