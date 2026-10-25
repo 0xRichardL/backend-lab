@@ -9,8 +9,8 @@
 | --- | --- |
 | Overall status | in progress |
 | Accumulated reported active time | 0 minutes |
-| Current unit | LG-10 — Update and delete a todo (`not started`) |
-| Next action | Begin LG-10 by showing how PATCH distinguishes omitted fields from supplied values; show every shell command before running it. |
+| Current unit | LG-11 — Handle failure paths (`not started`) |
+| Next action | Begin LG-11 with validation `422`, missing-row `404`, and a failed write that leaves data unchanged; show every shell command before running it. |
 
 ## Unit checklist
 
@@ -25,7 +25,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - [x] LG-07 — Give each request an async session — `completed`
 - [x] LG-08 — Create a todo — `completed`
 - [x] LG-09 — List and read todos — `completed`
-- [ ] LG-10 — Update and delete a todo — `not started`
+- [x] LG-10 — Update and delete a todo — `completed`
 - [ ] LG-11 — Handle failure paths — `not started`
 - [ ] LG-12 — Check the API with Pytest — `not started`
 - [ ] LG-13 — Run quality checks and final demo — `not started`
@@ -52,9 +52,11 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - LG-09: learner correctly chose `.order_by(Todo.id)` for a stable ascending collection. Ascending is the default direction.
 - LG-09: learner correctly explained that the query determines the collection order and the list comprehension maps each stored `Todo` to a new `TodoRead` item.
 - LG-09: learner identified `session.get(Todo, 1)` as returning the mapped todo; the route explicitly constructs `TodoRead` and returned the matching JSON. Learner asked about other handler return types and chose to skip an extra response-model check after the explanation.
+- LG-10: learner correctly distinguished omitted `title` from explicit `null` after a local Pydantic check. A live PATCH changed stored row 5 from `(5, "Keep title", false)` to `(5, "Keep title", true)`; explicit null returned `422`. DELETE returned `204` with an empty body, and a separate query found no row 5.
 
 ### Recent misconceptions or fragile knowledge
 
+- LG-10: learner initially described `exclude_unset=True` as removing all null-value fields; clarified and verified that it removes omitted fields, while explicit `null` remains `None`. No LG-10 work remains.
 - LG-09: learner initially treated `[3,1,2]` as the natural guaranteed order of `select(Todo)`. Clarified that without `ORDER BY`, SQL does not guarantee a row order.
 - LG-09: learner requested clarification of the Python list comprehension used to convert mapped `Todo` objects to `TodoRead` objects.
 - LG-09: learner correctly identified `session.get(Todo, 1)` as returning a mapped `Todo`, but guessed that the route returns that object directly. Clarified the explicit `TodoRead(...)` construction before FastAPI response processing.
@@ -62,6 +64,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 
 ### Incomplete knowledge or work
 
+- No LG-10 work remains. The live before-and-after row checks confirmed the partial PATCH and deletion behavior.
 - No LG-09 work remains. In-process reads against local Postgres returned HTTP `200`: the list contained IDs `[1,2,3,4]` in ascending order; `/todos/1` returned `{"id":1,"title":"Buy milk","completed":false}`. Row `2` already existed when this demonstration ran.
 - No LG-08 work remains. The route and reference note are in place; the create request and stored row matched. `make dev` could not bind a port in this sandbox, so the request was exercised through FastAPI's in-process `TestClient` with host-permission access to local Postgres.
 - No LG-07 work remains. The shared engine/factory, per-request dependency, `/db-check` route, and `make dev` environment loading are in place. The lifespan return annotation is `AsyncGenerator[None]`, correcting a reported deprecation warning for `AsyncIterator` with `@asynccontextmanager`.
@@ -77,7 +80,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 
 ### Exact re-entry prompt
 
-> LG-09 is complete. `GET /todos` returned IDs `[1,2,3,4]` in ascending order, and `/todos/1` returned the matching `TodoRead`. The learner explained ordering and conversion and identified `session.get(Todo, 1)` as the primary-key lookup. Begin LG-10 with PATCH's omitted versus supplied fields, then demonstrate update and delete. Show every shell command before running it.
+> LG-10 is complete. The learner distinguished omitted title from explicit null, and live Postgres inspection confirmed PATCH preserved title while changing completed, then DELETE removed the row and returned `204` with no body. Begin LG-11 with request validation `422`, missing-row `404`, and a failed write that leaves data unchanged. Show every shell command before running it.
 
 ## Adaptations
 

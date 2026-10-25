@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from database import database_url, get_session
 from models import Todo
-from schemas import TodoCreate, TodoRead
+from schemas import TodoCreate, TodoRead, TodoUpdate
 
 
 @asynccontextmanager
@@ -82,3 +82,39 @@ async def read_todo(
     if todo is None:
         raise HTTPException(status_code=404, detail="Todo not found")
     return TodoRead(id=todo.id, title=todo.title, completed=todo.completed)
+
+
+@app.patch("/todos/{todo_id}", response_model=TodoRead)
+async def update_todo(
+    todo_id: int,
+    payload: TodoUpdate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> TodoRead:
+    # Exclude omitted fields, but keep explicit nulls so they can be rejected.
+    changes = payload.model_dump(exclude_unset=True)
+    if any(value is None for value in changes.values()):
+        raise HTTPException(status_code=422, detail="Todo fields cannot be null")
+
+    todo = await session.get(Todo, todo_id)
+    if todo is None:
+        raise HTTPException(status_code=404, detail="Todo not found")
+
+    # TodoUpdate exposes only the two mutable mapped fields.
+    for field, value in changes.items():
+        setattr(todo, field, value)
+    await session.commit()
+    await session.refresh(todo)
+    return TodoRead(id=todo.id, title=todo.title, completed=todo.completed)
+
+
+@app.delete("/todos/{todo_id}", status_code=204)
+async def delete_todo(
+    todo_id: int,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> None:
+    todo = await session.get(Todo, todo_id)
+    if todo is None:
+        raise HTTPException(status_code=404, detail="Todo not found")
+    # delete() marks the row; commit() persists its removal.
+    await session.delete(todo)
+    await session.commit()
