@@ -4,8 +4,8 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import Depends, FastAPI
-from sqlalchemy import text
+from fastapi import Depends, FastAPI, HTTPException
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from database import database_url, get_session
@@ -57,4 +57,28 @@ async def create_todo(
     await session.commit()
     # Reload the stored row, including its database-generated ID.
     await session.refresh(todo)
+    return TodoRead(id=todo.id, title=todo.title, completed=todo.completed)
+
+
+@app.get("/todos", response_model=list[TodoRead])
+async def list_todos(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[TodoRead]:
+    # ORDER BY makes the collection response stable across requests.
+    todos = (await session.scalars(select(Todo).order_by(Todo.id))).all()
+    return [
+        TodoRead(id=todo.id, title=todo.title, completed=todo.completed)
+        for todo in todos
+    ]
+
+
+@app.get("/todos/{todo_id}", response_model=TodoRead)
+async def read_todo(
+    todo_id: int,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> TodoRead:
+    # get() uses the mapped primary key and returns None for a missing row.
+    todo = await session.get(Todo, todo_id)
+    if todo is None:
+        raise HTTPException(status_code=404, detail="Todo not found")
     return TodoRead(id=todo.id, title=todo.title, completed=todo.completed)

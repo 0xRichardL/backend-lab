@@ -9,8 +9,8 @@
 | --- | --- |
 | Overall status | in progress |
 | Accumulated reported active time | 0 minutes |
-| Current unit | LG-09 — List and read todos (`not started`) |
-| Next action | Begin LG-09 with the `select(Todo)` query for collection and ID lookup; show every shell command before running it. |
+| Current unit | LG-10 — Update and delete a todo (`not started`) |
+| Next action | Begin LG-10 by showing how PATCH distinguishes omitted fields from supplied values; show every shell command before running it. |
 
 ## Unit checklist
 
@@ -24,7 +24,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - [x] LG-06 — Apply the initial migration — `completed`
 - [x] LG-07 — Give each request an async session — `completed`
 - [x] LG-08 — Create a todo — `completed`
-- [ ] LG-09 — List and read todos — `not started`
+- [x] LG-09 — List and read todos — `completed`
 - [ ] LG-10 — Update and delete a todo — `not started`
 - [ ] LG-11 — Handle failure paths — `not started`
 - [ ] LG-12 — Check the API with Pytest — `not started`
@@ -49,13 +49,20 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - LG-07: learner identified `session_factory()` inside `async with` as the expression that creates each request's distinct session. Two `/db-check` requests against local Postgres returned HTTP 200 and `{"connected": true}`; temporary instrumentation recorded different `AsyncSession` objects.
 - LG-08: learner correctly identified `await session.commit()` as the durability boundary and `await session.refresh(todo)` as reloading stored row values into the object.
 - LG-08: the in-process `POST /todos` with `{"title":"Buy milk"}` returned HTTP `201` and `{"id":1,"title":"Buy milk","completed":false}`; a separate Postgres query returned `(1, "Buy milk", false)`. Learner identified the Pydantic default as the source of `completed=false` and Postgres as the source of `id=1`.
+- LG-09: learner correctly chose `.order_by(Todo.id)` for a stable ascending collection. Ascending is the default direction.
+- LG-09: learner correctly explained that the query determines the collection order and the list comprehension maps each stored `Todo` to a new `TodoRead` item.
+- LG-09: learner identified `session.get(Todo, 1)` as returning the mapped todo; the route explicitly constructs `TodoRead` and returned the matching JSON. Learner asked about other handler return types and chose to skip an extra response-model check after the explanation.
 
 ### Recent misconceptions or fragile knowledge
 
-- None currently observed.
+- LG-09: learner initially treated `[3,1,2]` as the natural guaranteed order of `select(Todo)`. Clarified that without `ORDER BY`, SQL does not guarantee a row order.
+- LG-09: learner requested clarification of the Python list comprehension used to convert mapped `Todo` objects to `TodoRead` objects.
+- LG-09: learner correctly identified `session.get(Todo, 1)` as returning a mapped `Todo`, but guessed that the route returns that object directly. Clarified the explicit `TodoRead(...)` construction before FastAPI response processing.
+- LG-09: learner asked what happens when a handler returns a different type; compatible dict filtering versus response validation failure was explained. Learner chose to skip the additional check.
 
 ### Incomplete knowledge or work
 
+- No LG-09 work remains. In-process reads against local Postgres returned HTTP `200`: the list contained IDs `[1,2,3,4]` in ascending order; `/todos/1` returned `{"id":1,"title":"Buy milk","completed":false}`. Row `2` already existed when this demonstration ran.
 - No LG-08 work remains. The route and reference note are in place; the create request and stored row matched. `make dev` could not bind a port in this sandbox, so the request was exercised through FastAPI's in-process `TestClient` with host-permission access to local Postgres.
 - No LG-07 work remains. The shared engine/factory, per-request dependency, `/db-check` route, and `make dev` environment loading are in place. The lifespan return annotation is `AsyncGenerator[None]`, correcting a reported deprecation warning for `AsyncIterator` with `@asynccontextmanager`.
 - No LG-05 work remains. Read-only inspection found `todos` and `alembic_version` in local Postgres. `alembic_version` contained `2628f7aaa40d`; `todos` had `id`, `title`, and `completed` columns and zero rows. The migration files were removed in the discarded demonstration. The learner requested a fresh start, and `docker compose down --volumes` removed this experiment's container and named Postgres volume. `make db-up` then created a fresh healthy container and volume; read-only inspection of `public` returned zero tables. `uv add --dev alembic` added Alembic 1.20.1 to the experiment and updated the lockfile. `uv run --locked alembic init -t async alembic` generated `alembic.ini`, `alembic/env.py`, `alembic/script.py.mako`, `alembic/README`, and an empty `alembic/versions` directory; all generated file contents were shown before editing.
@@ -70,7 +77,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 
 ### Exact re-entry prompt
 
-> LG-08 is complete. The learner traced `add` → `commit` → `refresh`, correctly identified the transaction boundary, the Pydantic default for `completed`, and the Postgres-generated ID; the returned `201` JSON matched the stored row. Begin LG-09 by showing the collection query and the lookup-by-ID query, then their responses. Show every shell command before running it.
+> LG-09 is complete. `GET /todos` returned IDs `[1,2,3,4]` in ascending order, and `/todos/1` returned the matching `TodoRead`. The learner explained ordering and conversion and identified `session.get(Todo, 1)` as the primary-key lookup. Begin LG-10 with PATCH's omitted versus supplied fields, then demonstrate update and delete. Show every shell command before running it.
 
 ## Adaptations
 
@@ -80,6 +87,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - Show every shell command to the learner before running it, then show its relevant output.
 - On 2026-10-25, the learner chose a narrow Ruff per-file exception for Alembic-generated revision style instead of editing the generated revision.
 - In LG-07, the learner asked for detailed explanations of `yield`, FastAPI dependency resolution, and the relevant NestJS comparison before code; the lesson used those explanations without changing the guide's order.
+- In LG-09, the learner chose to skip an extra response-model quiz after receiving the explanation. The item was completed based on its required read-query evidence and live responses.
 
 ## Session log
 
