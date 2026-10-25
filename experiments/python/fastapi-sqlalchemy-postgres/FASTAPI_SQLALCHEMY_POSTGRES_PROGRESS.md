@@ -9,8 +9,8 @@
 | --- | --- |
 | Overall status | in progress |
 | Accumulated reported active time | 0 minutes |
-| Current unit | LG-07 — Give each request an async session (`not started`) |
-| Next action | Start LG-07 by tracing the existing engine and proposed per-request session lifetime; show each command before running it and continue one step per turn. |
+| Current unit | LG-08 — Create a todo (`not started`) |
+| Next action | Begin LG-08 by tracing a POST body's validation into a mapped `Todo`; show every command before running it. |
 
 ## Unit checklist
 
@@ -22,7 +22,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - [x] LG-04 — Configure Postgres access — `completed`
 - [x] LG-05 — Map the todo table — `completed`
 - [x] LG-06 — Apply the initial migration — `completed`
-- [ ] LG-07 — Give each request an async session — `not started`
+- [x] LG-07 — Give each request an async session — `completed`
 - [ ] LG-08 — Create a todo — `not started`
 - [ ] LG-09 — List and read todos — `not started`
 - [ ] LG-10 — Update and delete a todo — `not started`
@@ -44,6 +44,9 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - LG-05: learner correctly identified `server_default=text("false")` as the source of Postgres `DEFAULT false` for a direct insert that omits `completed`, distinct from the Pydantic input default.
 - LG-06: the reviewed initial revision was applied to fresh local Postgres. `\d todos` showed `id` as an integer primary key, `title` as non-null text, and `completed` as non-null boolean with default `false`. `alembic_version` recorded `8d8b678efb5f`; `todos` had zero rows.
 - LG-06: the migration, notes, and repeatable `alembic upgrade head` README command are committed. On 2026-10-25, Ruff lint and format checks passed after limiting three style-rule exceptions to generated Alembic revision files.
+- LG-07: learner correctly explained that `Depends(get_session)` needs no NestJS-style provider registration and that two concurrent requests receive two distinct sessions.
+- LG-07: learner correctly explained that A's session closes when A finishes while B's session and the shared engine remain available.
+- LG-07: learner identified `session_factory()` inside `async with` as the expression that creates each request's distinct session. Two `/db-check` requests against local Postgres returned HTTP 200 and `{"connected": true}`; temporary instrumentation recorded different `AsyncSession` objects.
 
 ### Recent misconceptions or fragile knowledge
 
@@ -51,6 +54,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 
 ### Incomplete knowledge or work
 
+- No LG-07 work remains. The shared engine/factory, per-request dependency, `/db-check` route, and `make dev` environment loading are in place. The lifespan return annotation is `AsyncGenerator[None]`, correcting a reported deprecation warning for `AsyncIterator` with `@asynccontextmanager`.
 - No LG-05 work remains. Read-only inspection found `todos` and `alembic_version` in local Postgres. `alembic_version` contained `2628f7aaa40d`; `todos` had `id`, `title`, and `completed` columns and zero rows. The migration files were removed in the discarded demonstration. The learner requested a fresh start, and `docker compose down --volumes` removed this experiment's container and named Postgres volume. `make db-up` then created a fresh healthy container and volume; read-only inspection of `public` returned zero tables. `uv add --dev alembic` added Alembic 1.20.1 to the experiment and updated the lockfile. `uv run --locked alembic init -t async alembic` generated `alembic.ini`, `alembic/env.py`, `alembic/script.py.mako`, `alembic/README`, and an empty `alembic/versions` directory; all generated file contents were shown before editing.
 
 ### Open questions
@@ -63,7 +67,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 
 ### Exact re-entry prompt
 
-> LG-06 is complete. The initial revision was reviewed and applied; Postgres inspection confirmed the schema and revision row. The repeatable command is in the README. Ruff lint and format checks passed with a narrow exception for generated Alembic revisions. Start LG-07 by tracing the engine and a per-request async session. Show every command before running it and continue one step per turn.
+> LG-07 is complete. The app creates one engine and session factory during lifespan setup; `get_session` creates and closes one session per request. The learner correctly traced concurrent requests and identified `session_factory()` as the creator. Two `/db-check` requests against Postgres returned `{"connected": true}` through distinct session objects. Begin LG-08 by tracing validated POST input into a mapped `Todo`, then show `add`, `commit`, `refresh`, and a `201` response. Show every command before running it.
 
 ## Adaptations
 
@@ -72,6 +76,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - The learner knows the general migration-tool pattern and asked to skip generic concept-check questions. Focus LG-06 on the specific Alembic files, commands, and observed Postgres result; verify mastery through the demonstrated artifact and a concise explanation only where it adds value.
 - Show every shell command to the learner before running it, then show its relevant output.
 - On 2026-10-25, the learner chose a narrow Ruff per-file exception for Alembic-generated revision style instead of editing the generated revision.
+- In LG-07, the learner asked for detailed explanations of `yield`, FastAPI dependency resolution, and the relevant NestJS comparison before code; the lesson used those explanations without changing the guide's order.
 
 ## Session log
 
@@ -115,3 +120,12 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - Learner evidence: prior reviewed migration and Postgres inspection showed the expected initial `todos` schema, revision row, and zero todo rows. The learner chose to ignore generated revision style findings through a scoped Ruff config.
 - Verification: `UV_CACHE_DIR=/tmp/backend-lab-uv-cache make lint` passed; `UV_CACHE_DIR=/tmp/backend-lab-uv-cache make format-check` passed (11 files already formatted). The temporary uv cache path was needed because the sandbox could not access the default cache.
 - Next prompt: Begin LG-07 by tracing the existing engine and a per-request async session. Show every command before running it and continue one step per turn.
+
+### Session 5 — 2026-10-25 (ended)
+
+- Planned time: 25 minutes.
+- Actual active time: not reported.
+- Unit worked: LG-07 completed.
+- Learner evidence: explained automatic dependency resolution, distinct sessions for two requests, A's cleanup while B remains active, and `session_factory()` as the session creation point.
+- Demonstration: two `/db-check` requests against local Postgres returned HTTP 200 with `{"connected": true}`; temporary instrumentation confirmed distinct session objects. Ruff lint and format checks passed. The local Docker container was stopped afterward, preserving its data volume.
+- Next prompt: Begin LG-08 by tracing POST input into the mapped todo object. Show every command before running it.

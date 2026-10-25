@@ -6,7 +6,7 @@ sync:
 
 # Serve the app locally and reload it when Python source changes.
 dev:
-	uv run --locked uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+	uv run --locked --env-file .env uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 
 # Keep the small demonstration consistent with its configured Ruff rules.
 lint:

@@ -2,10 +2,12 @@
 
 import asyncio
 import os
+from collections.abc import AsyncIterator
 
+from fastapi import Request
 from sqlalchemy import text
 from sqlalchemy.engine import URL
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 
 def database_url() -> URL:
@@ -18,6 +20,16 @@ def database_url() -> URL:
         port=int(os.environ.get("POSTGRES_PORT", "5433")),
         database=os.environ["POSTGRES_DB"],
     )
+
+
+async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
+    # The app owns the factory; each dependency call creates a distinct session.
+    session_factory: async_sessionmaker[AsyncSession] = (
+        request.app.state.session_factory
+    )
+    async with session_factory() as session:
+        # FastAPI passes this session to one request, then resumes for cleanup.
+        yield session
 
 
 async def check_connection() -> None:
