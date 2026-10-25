@@ -1,7 +1,7 @@
 # Learning Progress: FastAPI–SQLAlchemy–Postgres
 
 > Guide: [FASTAPI_SQLALCHEMY_POSTGRES_GUIDE.md](./FASTAPI_SQLALCHEMY_POSTGRES_GUIDE.md)
-> Last updated: 2026-10-23 10:22 +07:00
+> Last updated: 2026-10-25 +07:00
 
 ## Status
 
@@ -9,8 +9,8 @@
 | --- | --- |
 | Overall status | in progress |
 | Accumulated reported active time | 0 minutes |
-| Current unit | LG-06 — Apply the initial migration (`in progress`) |
-| Next action | Document the repeatable migration command in the experiment README, run LG-06's relevant checks, then commit the revision, notes, README, and progress before LG-07. |
+| Current unit | LG-07 — Give each request an async session (`not started`) |
+| Next action | Start LG-07 by tracing the existing engine and proposed per-request session lifetime; show each command before running it and continue one step per turn. |
 
 ## Unit checklist
 
@@ -21,7 +21,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - [x] LG-03 — Define the todo API contract — `completed`
 - [x] LG-04 — Configure Postgres access — `completed`
 - [x] LG-05 — Map the todo table — `completed`
-- [ ] LG-06 — Apply the initial migration — `in progress`
+- [x] LG-06 — Apply the initial migration — `completed`
 - [ ] LG-07 — Give each request an async session — `not started`
 - [ ] LG-08 — Create a todo — `not started`
 - [ ] LG-09 — List and read todos — `not started`
@@ -43,6 +43,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - LG-04: learner identified `asyncpg` as the driver and, after clarification, `postgresql` as the PostgreSQL dialect in the URL. The successful `SELECT 1` connection check and credential source were shown in the prior session.
 - LG-05: learner correctly identified `server_default=text("false")` as the source of Postgres `DEFAULT false` for a direct insert that omits `completed`, distinct from the Pydantic input default.
 - LG-06: the reviewed initial revision was applied to fresh local Postgres. `\d todos` showed `id` as an integer primary key, `title` as non-null text, and `completed` as non-null boolean with default `false`. `alembic_version` recorded `8d8b678efb5f`; `todos` had zero rows.
+- LG-06: the migration, notes, and repeatable `alembic upgrade head` README command are committed. On 2026-10-25, Ruff lint and format checks passed after limiting three style-rule exceptions to generated Alembic revision files.
 
 ### Recent misconceptions or fragile knowledge
 
@@ -62,7 +63,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 
 ### Exact re-entry prompt
 
-> Alembic autogenerate produced initial revision `8d8b678efb5f_create_todos.py` from the empty Postgres schema. It was reviewed and formatted, then `upgrade head` applied it. Postgres inspection confirmed the expected table, version row, and zero todo rows. Next document the repeatable migration command in the experiment README, run relevant checks, and commit the LG-06 files plus progress before LG-07. Show every command before running it and continue one step per turn.
+> LG-06 is complete. The initial revision was reviewed and applied; Postgres inspection confirmed the schema and revision row. The repeatable command is in the README. Ruff lint and format checks passed with a narrow exception for generated Alembic revisions. Start LG-07 by tracing the engine and a per-request async session. Show every command before running it and continue one step per turn.
 
 ## Adaptations
 
@@ -70,6 +71,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - After each Learning Item's mastery evidence is demonstrated and its relevant checks pass, commit that item's files and progress update before starting the next Learning Item. Keep commits scoped to the completed item.
 - The learner knows the general migration-tool pattern and asked to skip generic concept-check questions. Focus LG-06 on the specific Alembic files, commands, and observed Postgres result; verify mastery through the demonstrated artifact and a concise explanation only where it adds value.
 - Show every shell command to the learner before running it, then show its relevant output.
+- On 2026-10-25, the learner chose a narrow Ruff per-file exception for Alembic-generated revision style instead of editing the generated revision.
 
 ## Session log
 
@@ -104,3 +106,12 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - Demonstration and file state: `models.py` and `TODO_TABLE_MAPPING.md` remain. The discarded migration's Postgres volume was removed at the learner's request, and fresh Postgres has an empty `public` schema. Alembic was added, its async starter files were generated and configured, and the setup was committed as `d2270bf`. No new revision has been generated or applied yet.
 - Teaching preference: work through each file and each change separately, showing the observed result before continuing. Generated lockfile contents do not need a walkthrough.
 - Next prompt: Show and run `uv run --locked --env-file .env alembic revision --autogenerate -m "create todos"`; inspect the generated revision before applying it. Show every command before running it.
+
+### Session 4 — 2026-10-25 (ended)
+
+- Planned time: 45 minutes.
+- Actual active time: not reported.
+- Unit worked: LG-06 completed.
+- Learner evidence: prior reviewed migration and Postgres inspection showed the expected initial `todos` schema, revision row, and zero todo rows. The learner chose to ignore generated revision style findings through a scoped Ruff config.
+- Verification: `UV_CACHE_DIR=/tmp/backend-lab-uv-cache make lint` passed; `UV_CACHE_DIR=/tmp/backend-lab-uv-cache make format-check` passed (11 files already formatted). The temporary uv cache path was needed because the sandbox could not access the default cache.
+- Next prompt: Begin LG-07 by tracing the existing engine and a per-request async session. Show every command before running it and continue one step per turn.
