@@ -1,27 +1,52 @@
-# Initial Alembic migration notes
+# Alembic quick reference
 
-This note tracks LG-06's demonstrated steps. Commands run from this experiment directory unless stated otherwise.
+Changing a SQLAlchemy model does not change the database. Alembic helps bridge that gap: it compares the model metadata with the current database schema and generates a migration. Review that migration, apply it, then check the result.
 
-## Starting state
+The commands below use this experiment's `uv` project and `.env` file. Run them from this directory with Postgres available.
 
-`models.py` defines `Todo` with `id`, `title`, and `completed`. Its `Base.metadata` describes the intended table but does not create it. Alembic will compare that metadata with the live database to generate a candidate revision. Review the revision before applying it.
+## 1. Set up Alembic once
 
-The prior demonstration had left `todos` and `alembic_version` in local Postgres without matching migration files. At the learner's request, the experiment database was reset.
+```sh
+uv add --dev alembic
+uv run --locked alembic init -t async alembic
+```
 
-## Commands and observed results
+The first command adds Alembic to the project dependencies. The second creates `alembic.ini`, `alembic/env.py`, and `alembic/versions/` using the async template. This setup already exists in this experiment, so do not repeat it for each migration.
 
-1. `docker compose down --volumes` removed this experiment's Postgres container and `fastapi-sqlalchemy-postgres_postgres_data` volume. This deleted the prior local database contents.
-2. `make db-up` created a new volume and started a healthy Postgres 17 container.
-3. A read-only query of `information_schema.tables` for the `public` schema returned zero tables.
-4. `uv add --dev alembic` added Alembic 1.20.1 to `pyproject.toml` and `uv.lock`.
-5. `uv run --locked alembic init -t async alembic` generated `alembic.ini`, `alembic/env.py`, `alembic/script.py.mako`, `alembic/README`, and an empty `alembic/versions` directory.
-6. `cat alembic.ini alembic/env.py alembic/README alembic/script.py.mako` showed the unedited starter files. The generated `env.py` has `target_metadata = None`, and `alembic.ini` has a placeholder `sqlalchemy.url`.
-7. Edited `alembic/env.py` to use `Base.metadata` for autogenerate and the app's `database_url()` for both offline and online migrations. The online path creates an async engine directly, so the placeholder URL in `alembic.ini` is not used. `cat alembic/env.py` showed the resulting file.
-8. `uv run --locked --env-file .env alembic revision --autogenerate -m "create todos"` detected one added table and wrote `alembic/versions/8d8b678efb5f_create_todos.py`. Inspection showed an initial revision (`down_revision = None`) whose `upgrade()` creates `todos` with non-null `id`, `title`, and `completed`, a primary key on `id`, and a server default of `false` for `completed`. `downgrade()` drops the table. This is a generated candidate; it has not been applied.
-9. `.venv/bin/ruff format alembic/versions/8d8b678efb5f_create_todos.py` reformatted the generated candidate. Inspection confirmed the operations remained the same.
-10. `uv run --locked --env-file .env alembic upgrade head` applied revision `8d8b678efb5f` to the fresh local Postgres database.
-11. A read-only `psql` inspection showed `todos(id integer primary key, title text not null, completed boolean not null default false)`, `alembic_version.version_num = 8d8b678efb5f`, and zero todo rows.
+## 2. Connect Alembic to the models and database
 
-## Next step
+To generate a migration, Alembic needs to know what the schema should look like and what the database looks like now. In `alembic/env.py`, `target_metadata` points to `Base.metadata` from `models.py`; `database_url()` from `database.py` supplies the connection.
 
-Document the repeatable migration command in the experiment README, run the relevant local checks, and commit LG-06's revision and documentation.
+The online path creates an async engine from that URL, so it does not use the placeholder `sqlalchemy.url` in `alembic.ini`. This configuration is already in place for the experiment.
+
+## 3. Generate a migration
+
+After changing the models, generate a candidate revision:
+
+```sh
+uv run --locked --env-file .env alembic revision --autogenerate -m "describe the change"
+```
+
+Alembic compares the model metadata with the connected database and writes a new file under `alembic/versions/`. This does not apply the change. The message becomes part of the filename; the revision ID is generated separately.
+
+## 4. Review the migration file
+
+Autogenerate proposes a migration; the new version file is where you decide whether that proposal is right. Check that `upgrade()` makes the intended schema change, `downgrade()` reverses it, and `down_revision` points to the preceding version. For an initial migration, `down_revision` is `None`. Edit the generated operations before applying them if they do not match what you intended.
+
+## 5. Apply the migration
+
+```sh
+uv run --locked --env-file .env alembic upgrade head
+```
+
+Alembic runs the unapplied `upgrade()` operations through the latest revision (`head`) and records the current revision in the database's `alembic_version` table.
+
+## 6. Verify the result
+
+Inspect the database after the upgrade. Its columns and constraints should match the reviewed migration, and `alembic_version.version_num` should match the applied revision. If the migration changes existing rows, check the resulting data as well.
+
+## Example from this experiment
+
+The first migration, `8d8b678efb5f_create_todos.py`, created the `todos` table; its downgrade dropped it. After applying the migration, inspection showed the expected primary key, non-null columns, and `false` default for `completed`. The database recorded revision `8d8b678efb5f`, and the table had zero rows.
+
+For that demonstration only, the local database was reset with `docker compose down --volumes` because it contained tables without matching migration files. That command deleted the experiment's local database contents and is not part of the regular workflow.
