@@ -1,7 +1,7 @@
 # Learning Progress: FastAPI–SQLAlchemy–Postgres
 
 > Guide: [FASTAPI_SQLALCHEMY_POSTGRES_GUIDE.md](./FASTAPI_SQLALCHEMY_POSTGRES_GUIDE.md)
-> Last updated: 2026-10-25 +07:00
+> Last updated: 2026-10-26 +07:00
 
 ## Status
 
@@ -9,8 +9,8 @@
 | --- | --- |
 | Overall status | in progress |
 | Accumulated reported active time | 0 minutes |
-| Current unit | LG-08 — Create a todo (`not started`) |
-| Next action | Begin LG-08 by tracing a POST body's validation into a mapped `Todo`; show every command before running it. |
+| Current unit | LG-09 — List and read todos (`not started`) |
+| Next action | Begin LG-09 with the `select(Todo)` query for collection and ID lookup; show every shell command before running it. |
 
 ## Unit checklist
 
@@ -23,7 +23,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - [x] LG-05 — Map the todo table — `completed`
 - [x] LG-06 — Apply the initial migration — `completed`
 - [x] LG-07 — Give each request an async session — `completed`
-- [ ] LG-08 — Create a todo — `not started`
+- [x] LG-08 — Create a todo — `completed`
 - [ ] LG-09 — List and read todos — `not started`
 - [ ] LG-10 — Update and delete a todo — `not started`
 - [ ] LG-11 — Handle failure paths — `not started`
@@ -47,6 +47,8 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - LG-07: learner correctly explained that `Depends(get_session)` needs no NestJS-style provider registration and that two concurrent requests receive two distinct sessions.
 - LG-07: learner correctly explained that A's session closes when A finishes while B's session and the shared engine remain available.
 - LG-07: learner identified `session_factory()` inside `async with` as the expression that creates each request's distinct session. Two `/db-check` requests against local Postgres returned HTTP 200 and `{"connected": true}`; temporary instrumentation recorded different `AsyncSession` objects.
+- LG-08: learner correctly identified `await session.commit()` as the durability boundary and `await session.refresh(todo)` as reloading stored row values into the object.
+- LG-08: the in-process `POST /todos` with `{"title":"Buy milk"}` returned HTTP `201` and `{"id":1,"title":"Buy milk","completed":false}`; a separate Postgres query returned `(1, "Buy milk", false)`. Learner identified the Pydantic default as the source of `completed=false` and Postgres as the source of `id=1`.
 
 ### Recent misconceptions or fragile knowledge
 
@@ -54,6 +56,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 
 ### Incomplete knowledge or work
 
+- No LG-08 work remains. The route and reference note are in place; the create request and stored row matched. `make dev` could not bind a port in this sandbox, so the request was exercised through FastAPI's in-process `TestClient` with host-permission access to local Postgres.
 - No LG-07 work remains. The shared engine/factory, per-request dependency, `/db-check` route, and `make dev` environment loading are in place. The lifespan return annotation is `AsyncGenerator[None]`, correcting a reported deprecation warning for `AsyncIterator` with `@asynccontextmanager`.
 - No LG-05 work remains. Read-only inspection found `todos` and `alembic_version` in local Postgres. `alembic_version` contained `2628f7aaa40d`; `todos` had `id`, `title`, and `completed` columns and zero rows. The migration files were removed in the discarded demonstration. The learner requested a fresh start, and `docker compose down --volumes` removed this experiment's container and named Postgres volume. `make db-up` then created a fresh healthy container and volume; read-only inspection of `public` returned zero tables. `uv add --dev alembic` added Alembic 1.20.1 to the experiment and updated the lockfile. `uv run --locked alembic init -t async alembic` generated `alembic.ini`, `alembic/env.py`, `alembic/script.py.mako`, `alembic/README`, and an empty `alembic/versions` directory; all generated file contents were shown before editing.
 
@@ -67,7 +70,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 
 ### Exact re-entry prompt
 
-> LG-07 is complete. The app creates one engine and session factory during lifespan setup; `get_session` creates and closes one session per request. The learner correctly traced concurrent requests and identified `session_factory()` as the creator. Two `/db-check` requests against Postgres returned `{"connected": true}` through distinct session objects. Begin LG-08 by tracing validated POST input into a mapped `Todo`, then show `add`, `commit`, `refresh`, and a `201` response. Show every command before running it.
+> LG-08 is complete. The learner traced `add` → `commit` → `refresh`, correctly identified the transaction boundary, the Pydantic default for `completed`, and the Postgres-generated ID; the returned `201` JSON matched the stored row. Begin LG-09 by showing the collection query and the lookup-by-ID query, then their responses. Show every shell command before running it.
 
 ## Adaptations
 

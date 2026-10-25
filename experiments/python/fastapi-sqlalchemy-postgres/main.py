@@ -9,6 +9,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from database import database_url, get_session
+from models import Todo
+from schemas import TodoCreate, TodoRead
 
 
 @asynccontextmanager
@@ -41,3 +43,18 @@ async def db_check(
     # FastAPI gets a fresh session from get_session for this request.
     value = await session.scalar(text("SELECT 1"))
     return {"connected": value == 1}
+
+
+@app.post("/todos", status_code=201, response_model=TodoRead)
+async def create_todo(
+    payload: TodoCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> TodoRead:
+    # FastAPI validates the request body before entering this function.
+    todo = Todo(title=payload.title, completed=payload.completed)
+    session.add(todo)
+    # Commit flushes the INSERT and ends the write transaction.
+    await session.commit()
+    # Reload the stored row, including its database-generated ID.
+    await session.refresh(todo)
+    return TodoRead(id=todo.id, title=todo.title, completed=todo.completed)

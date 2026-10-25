@@ -6,7 +6,7 @@ How does a small FastAPI todo request move through Pydantic validation, an async
 
 ## Status
 
-Active. The health route, Pydantic models, Postgres connection, todo table mapping, initial Alembic migration, and request-scoped sessions are in place. Todo CRUD is still ahead.
+Active. The health route, Pydantic models, Postgres connection, todo table mapping, initial Alembic migration, request-scoped sessions, and create-todo route are in place. List, read, update, and delete are still ahead.
 
 ## Run locally
 
@@ -21,7 +21,7 @@ make db-check
 make dev
 ```
 
-`make dev` serves `GET /health` at `http://127.0.0.1:8000/health` and `GET /db-check` for a query through a request-scoped async session; interactive API docs are at `/docs`. Stop the server with `Ctrl+C`. Run `make db-down` to stop Postgres without deleting its data. The available code checks are `make lint` and `make format-check`.
+`make dev` serves `GET /health` at `http://127.0.0.1:8000/health`, `GET /db-check` for a query through a request-scoped async session, and `POST /todos` to create a row. Interactive API docs are at `/docs`. Stop the server with `Ctrl+C`. Run `make db-down` to stop Postgres without deleting its data. The available code checks are `make lint` and `make format-check`.
 
 ## Documentation
 
@@ -30,7 +30,8 @@ make dev
 - [Todo table mapping](./TODO_TABLE_MAPPING.md): model fields, database columns, and defaults.
 - [Alembic notes](./ALEMBIC_NOTES.md): migration workflow and the initial revision example.
 - [Async session lifetime](./ASYNC_SESSION_LIFETIME.md): shared engine and factory, per-request session, and cleanup.
+- [Create todo flow](./CREATE_TODO_FLOW.md): validated input, insert and commit, refresh, and response.
 
 ## Current findings
 
-Local checks have confirmed the health response, Pydantic model behavior, Postgres connectivity, and the initial `todos` schema after migration. Two `/db-check` requests returned HTTP 200 with `{"connected": true}` through distinct async sessions. Todo writes and their transaction boundary have not been demonstrated yet, so there is no final verdict.
+Local checks have confirmed the health response, Pydantic model behavior, Postgres connectivity, and the initial `todos` schema after migration. Two `/db-check` requests returned HTTP 200 with `{"connected": true}` through distinct async sessions. An in-process `POST /todos` against local Postgres returned HTTP 201 and `{"id":1,"title":"Buy milk","completed":false}`; a separate query found the matching stored row. The route commits before returning. The full CRUD path has not been demonstrated yet, so there is no final verdict.
