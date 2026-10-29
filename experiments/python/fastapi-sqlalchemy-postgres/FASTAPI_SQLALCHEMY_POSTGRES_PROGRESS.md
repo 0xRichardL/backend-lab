@@ -1,7 +1,7 @@
 # Learning Progress: FastAPI–SQLAlchemy–Postgres
 
 > Guide: [FASTAPI_SQLALCHEMY_POSTGRES_GUIDE.md](./FASTAPI_SQLALCHEMY_POSTGRES_GUIDE.md)
-> Last updated: 2026-10-26 +07:00
+> Last updated: 2026-10-29 +07:00
 
 ## Status
 
@@ -9,8 +9,8 @@
 | --- | --- |
 | Overall status | in progress |
 | Accumulated reported active time | 0 minutes |
-| Current unit | LG-11 — Handle failure paths (`not started`) |
-| Next action | Begin LG-11 with validation `422`, missing-row `404`, and a failed write that leaves data unchanged; show every shell command before running it. |
+| Current unit | LG-12 — Check the API with Pytest (`not started`) |
+| Next action | At the next session, ask for available active-learning time, then begin LG-12 by inspecting the current API and test setup. Show every shell command before running it. |
 
 ## Unit checklist
 
@@ -26,7 +26,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - [x] LG-08 — Create a todo — `completed`
 - [x] LG-09 — List and read todos — `completed`
 - [x] LG-10 — Update and delete a todo — `completed`
-- [ ] LG-11 — Handle failure paths — `not started`
+- [x] LG-11 — Handle failure paths — `completed`
 - [ ] LG-12 — Check the API with Pytest — `not started`
 - [ ] LG-13 — Run quality checks and final demo — `not started`
 
@@ -53,6 +53,8 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - LG-09: learner correctly explained that the query determines the collection order and the list comprehension maps each stored `Todo` to a new `TodoRead` item.
 - LG-09: learner identified `session.get(Todo, 1)` as returning the mapped todo; the route explicitly constructs `TodoRead` and returned the matching JSON. Learner asked about other handler return types and chose to skip an extra response-model check after the explanation.
 - LG-10: learner correctly distinguished omitted `title` from explicit `null` after a local Pydantic check. A live PATCH changed stored row 5 from `(5, "Keep title", false)` to `(5, "Keep title", true)`; explicit null returned `422`. DELETE returned `204` with an empty body, and a separate query found no row 5.
+- LG-11: empty-title POST returned `422`; missing todo GET returned `404`. The learner identified `await session.rollback()` as the reset before reusing a failed SQLAlchemy session. A local SQLite session demonstration showed `IntegrityError` on flush, `PendingRollbackError` before rollback, and unchanged previously committed data afterward.
+- LG-11: the direct DELETE uses `DELETE ... RETURNING id`, raises `404` when no ID is returned, and commits a match. A local SQLAlchemy check with the project model returned a matched ID, zero rows after commit, and `None` for a missing ID. Ruff lint and format checks passed. The learner accepted this evidence to close LG-11; live Postgres was unavailable.
 
 ### Recent misconceptions or fragile knowledge
 
@@ -64,6 +66,7 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 
 ### Incomplete knowledge or work
 
+- LG-12 has not started. The learner accepted local SQLAlchemy evidence to close LG-11; this session did not verify the updated route against live Postgres because Docker was unavailable.
 - No LG-10 work remains. The live before-and-after row checks confirmed the partial PATCH and deletion behavior.
 - No LG-09 work remains. In-process reads against local Postgres returned HTTP `200`: the list contained IDs `[1,2,3,4]` in ascending order; `/todos/1` returned `{"id":1,"title":"Buy milk","completed":false}`. Row `2` already existed when this demonstration ran.
 - No LG-08 work remains. The route and reference note are in place; the create request and stored row matched. `make dev` could not bind a port in this sandbox, so the request was exercised through FastAPI's in-process `TestClient` with host-permission access to local Postgres.
@@ -76,11 +79,11 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 
 ### Retrieval prompts
 
-- None for LG-05; its mastery evidence was demonstrated.
+- None for completed LG-11; start LG-12 without revisiting it unless requested.
 
 ### Exact re-entry prompt
 
-> LG-10 is complete. The learner distinguished omitted title from explicit null, and live Postgres inspection confirmed PATCH preserved title while changing completed, then DELETE removed the row and returned `204` with no body. Begin LG-11 with request validation `422`, missing-row `404`, and a failed write that leaves data unchanged. Show every shell command before running it.
+> Ask for available active-learning time. Begin LG-12 by inspecting the current API and test setup, then show representative Pytest API checks for create/read behavior, invalid input, missing todo, and deletion. Show every shell command before running it. Teach common failures directly without quiz questions, and do not assign database isolation puzzles.
 
 ## Adaptations
 
@@ -91,6 +94,12 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - On 2026-10-25, the learner chose a narrow Ruff per-file exception for Alembic-generated revision style instead of editing the generated revision.
 - In LG-07, the learner asked for detailed explanations of `yield`, FastAPI dependency resolution, and the relevant NestJS comparison before code; the lesson used those explanations without changing the guide's order.
 - In LG-09, the learner chose to skip an extra response-model quiz after receiving the explanation. The item was completed based on its required read-query evidence and live responses.
+- After LG-10 was completed, the learner requested a code walkthrough before continuing LG-11. Revisit the PATCH and DELETE implementation without changing the guide order or reopening the completed item.
+- The learner then requested the exact committed change line by line; use source line numbers and explain each statement before resuming LG-11.
+- The learner asked about a one-statement direct DELETE, then tried it in `main.py`. The route was completed in the working tree after their attempt; verify its live behavior before recording it as observed evidence.
+- On 2026-10-29, the learner asked to keep LG-11 focused on SQLAlchemy's session lifecycle and not solve database isolation or row-count scenarios. Use the SQLite demonstration only as supporting evidence for failed-session behavior; do not ask further database transaction puzzles.
+- On 2026-10-29, the learner explicitly requested direct instruction for common failure cases and no quiz questions. Present the cases and observed responses; do not ask the learner to diagnose them.
+- On 2026-10-29, the learner asked to implement the direct DELETE using best practice and close LG-11 with the available evidence. The completed route and a local SQLAlchemy check satisfy this learner-directed close; live Postgres verification remains an explicit limit, not a prerequisite to proceed.
 
 ## Session log
 
@@ -143,3 +152,14 @@ Use only `not started`, `in progress`, `completed`, `blocked`, `deferred`, or `s
 - Learner evidence: explained automatic dependency resolution, distinct sessions for two requests, A's cleanup while B remains active, and `session_factory()` as the session creation point.
 - Demonstration: two `/db-check` requests against local Postgres returned HTTP 200 with `{"connected": true}`; temporary instrumentation confirmed distinct session objects. Ruff lint and format checks passed. The local Docker container was stopped afterward, preserving its data volume.
 - Next prompt: Begin LG-08 by tracing POST input into the mapped todo object. Show every command before running it.
+
+### Session 6 — 2026-10-29 (ended)
+
+- Planned time: 30 minutes.
+- Actual active time: not reported.
+- Unit worked: LG-11 completed.
+- Learner evidence: identified `commit()` as the persistence boundary for direct DELETE and `await session.rollback()` as the reset step before reusing a failed SQLAlchemy session. Requested direct examples of common failures without quiz questions.
+- Demonstration: prior API checks showed `422` for invalid title and `404` for a missing todo. An in-memory SQLite SQLAlchemy session showed a failed flush, `PendingRollbackError` before rollback, and unchanged previously committed data after rollback. The direct DELETE was implemented with `DELETE ... RETURNING id`; a local SQLAlchemy check with the project model returned a matched ID, zero rows after commit, and `None` for a missing ID. Ruff lint and format checks passed.
+- Limitation: live Postgres was unavailable because Docker was not running and no Docker app was found. The learner explicitly accepted the available evidence to close LG-11.
+- Research notes: checked current official FastAPI error-handling and SQLAlchemy session and DELETE RETURNING documentation.
+- Next prompt: Ask for available active-learning time, then begin LG-12 by inspecting the current API and test setup. Show every shell command before running it; teach directly without quiz questions.

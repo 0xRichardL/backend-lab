@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException
-from sqlalchemy import select, text
+from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from database import database_url, get_session
@@ -112,9 +112,11 @@ async def delete_todo(
     todo_id: int,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> None:
-    todo = await session.get(Todo, todo_id)
-    if todo is None:
+    # RETURNING identifies a deleted row without a preceding SELECT.
+    result = await session.execute(
+        delete(Todo).where(Todo.id == todo_id).returning(Todo.id)
+    )
+    if result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Todo not found")
-    # delete() marks the row; commit() persists its removal.
-    await session.delete(todo)
+    # The DELETE ran in this session's transaction; commit persists it.
     await session.commit()
